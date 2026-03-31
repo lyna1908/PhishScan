@@ -1,0 +1,15 @@
+# Large data files
+data/CEAS_08.csv
+data/SpamAssasin.csv
+data/Nazario.csv
+data/emails.csv
+data/emails_parsed.csv
+data/features.csv
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# VS Code
+.vscode/

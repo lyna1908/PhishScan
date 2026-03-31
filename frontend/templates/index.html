@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhishScan — Terminal</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a0a;
+      color: #00ff41;
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .scanline {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px
+      );
+      pointer-events: none; z-index: 999;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    .header { border-bottom: 1px solid #00ff41; padding-bottom: 16px; margin-bottom: 24px; }
+    .header h1 { font-size: 1.6rem; letter-spacing: 4px; }
+    .header h1 span { color: #ff3131; }
+    .header .sub { font-size: 0.75rem; color: #00aa2a; margin-top: 6px; letter-spacing: 2px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-box {
+      border: 1px solid #00ff4155;
+      padding: 14px;
+      background: #050505;
+      text-align: center;
+    }
+
+    .stat-box .stat-value { font-size: 1.4rem; color: #00ff41; letter-spacing: 2px; }
+    .stat-box .stat-label { font-size: 0.65rem; color: #00aa2a; letter-spacing: 1px; margin-top: 4px; }
+
+    .examples {
+      margin-bottom: 16px;
+      border: 1px solid #00ff4133;
+      padding: 16px;
+      background: #050505;
+    }
+
+    .examples .ex-label { font-size: 0.7rem; color: #00aa2a; letter-spacing: 2px; margin-bottom: 10px; }
+
+    .ex-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .ex-btn {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1px solid #00ff4166;
+      color: #00ff41;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ex-btn:hover { background: #00ff4122; }
+    .ex-btn.phish { border-color: #ff313166; color: #ff3131; }
+    .ex-btn.phish:hover { background: #ff31310a; }
+
+    .terminal-box {
+      border: 1px solid #00ff4155;
+      padding: 20px;
+      margin-bottom: 16px;
+      background: #050505;
+    }
+
+    .terminal-box .label { font-size: 0.7rem; color: #00aa2a; letter-spacing: 2px; margin-bottom: 8px; }
+    .terminal-box .label span { color: #00ff41; }
+
+    input[type="text"], textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #00ff4133;
+      color: #00ff41;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.95rem;
+      padding: 8px 0;
+      outline: none;
+      resize: none;
+    }
+
+    input[type="text"]::placeholder,
+    textarea::placeholder { color: #00ff4144; }
+
+    textarea { height: 160px; border: 1px solid #00ff4133; padding: 10px; margin-top: 4px; }
+
+    input[type="file"] {
+      color: #00ff41;
+      margin-top: 8px;
+      cursor: pointer;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    input[type="file"]::-webkit-file-upload-button {
+      background: transparent;
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      font-family: 'Share Tech Mono', monospace;
+      padding: 4px 12px;
+      cursor: pointer;
+      margin-right: 12px;
+    }
+
+    input[type="file"]::-webkit-file-upload-button:hover {
+      background: #00ff41;
+      color: #0a0a0a;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1rem;
+      letter-spacing: 4px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover { background: #00ff41; color: #0a0a0a; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .output { margin-top: 24px; display: none; }
+    .output .line { font-size: 0.85rem; padding: 4px 0; color: #00aa2a; letter-spacing: 1px; }
+    .output .line.bright { color: #00ff41; }
+
+    .result-bar-wrap {
+      margin: 16px 0;
+      border: 1px solid #00ff4133;
+      height: 28px;
+      position: relative;
+      background: #050505;
+    }
+
+    .result-bar { height: 100%; transition: width 1s ease; width: 0%; }
+    .result-bar.safe  { background: #00ff41; }
+    .result-bar.warn  { background: #ffaa00; }
+    .result-bar.phish { background: #ff3131; }
+
+    .result-label {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.8rem; letter-spacing: 2px;
+      color: #0a0a0a; font-weight: bold; white-space: nowrap;
+    }
+
+    .verdict {
+      font-size: 1.3rem;
+      letter-spacing: 4px;
+      padding: 12px 0;
+      border-top: 1px solid #00ff4133;
+      border-bottom: 1px solid #00ff4133;
+      margin: 16px 0;
+    }
+
+    .verdict.safe  { color: #00ff41; }
+    .verdict.warn  { color: #ffaa00; }
+    .verdict.phish { color: #ff3131; }
+
+    .triggers { margin-top: 12px; }
+    .triggers .t { font-size: 0.82rem; padding: 3px 0; color: #ffaa00; }
+    .triggers .t.ok { color: #00ff41; }
+
+    .cursor {
+      display: inline-block; width: 10px; height: 1.1em;
+      background: #00ff41;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom; margin-left: 2px;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .divider { text-align: center; color: #00ff4133; font-size: 0.75rem; letter-spacing: 4px; margin: 8px 0; }
+
+    .dashboard {
+      margin-top: 24px;
+      border: 1px solid #00ff4155;
+      padding: 20px;
+      background: #050505;
+    }
+
+    .dash-title { font-size: 0.7rem; color: #00aa2a; letter-spacing: 2px; margin-bottom: 16px; }
+    .dash-subtitle { font-size: 0.65rem; color: #00ff4188; letter-spacing: 2px; margin-bottom: 12px; }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .dash-box {
+      border: 1px solid #00ff4133;
+      padding: 16px;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .dash-box:first-child { align-items: stretch; }
+
+    .feature-bar-row { margin-bottom: 10px; }
+
+    .feature-bar-label {
+      font-size: 0.7rem;
+      color: #00aa2a;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .feature-bar-track {
+      height: 10px;
+      background: #0f0f0f;
+      border: 1px solid #00ff4122;
+      position: relative;
+    }
+
+    .feature-bar-fill { height: 100%; width: 0%; transition: width 0.8s ease; }
+    .feature-bar-fill.triggered { background: #ff3131; }
+    .feature-bar-fill.clean     { background: #00ff41; }
+
+    .pie-legend { margin-top: 12px; font-size: 0.7rem; color: #00aa2a; letter-spacing: 1px; text-align: center; }
+    .pie-legend div { margin: 3px 0; }
+
+    .footer {
+      margin-top: 32px; font-size: 0.7rem;
+      color: #00ff4144; letter-spacing: 2px;
+      text-align: center; border-top: 1px solid #00ff4122; padding-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="scanline"></div>
+  <div class="container">
+
+    <div class="header">
+      <h1>PHISH<span>SCAN</span> v1.0</h1>
+      <div class="sub">// PHISHING EMAIL DETECTION SYSTEM — ML POWERED<span class="cursor"></span></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-value">46,527</div>
+        <div class="stat-label">EMAILS TRAINED</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">88.1%</div>
+        <div class="stat-label">F1 SCORE</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">86.9%</div>
+        <div class="stat-label">ACCURACY</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" style="color:#ff3131">0.927</div>
+        <div class="stat-label">ROC-AUC</div>
+      </div>
+    </div>
+
+    <div class="examples">
+      <div class="ex-label">&gt; LOAD_EXAMPLE_EMAIL</div>
+      <div class="ex-buttons">
+        <button class="ex-btn phish" onclick="loadExample('paypal')">[ PAYPAL SCAM ]</button>
+        <button class="ex-btn phish" onclick="loadExample('bank')">[ BANK FRAUD ]</button>
+        <button class="ex-btn phish" onclick="loadExample('prize')">[ PRIZE WINNER ]</button>
+        <button class="ex-btn" onclick="loadExample('legit')">[ LEGITIMATE ]</button>
+      </div>
+    </div>
+
+    <div class="terminal-box">
+      <div class="label">&gt; <span>SENDER_ADDRESS</span></div>
+      <input id="sender" type="text" placeholder="attacker@suspicious-domain.com" />
+    </div>
+
+    <div class="terminal-box">
+      <div class="label">&gt; <span>SUBJECT_LINE</span></div>
+      <input id="subject" type="text" placeholder="Your account has been suspended..." />
+    </div>
+
+    <div class="terminal-box">
+      <div class="label">&gt; <span>EMAIL_BODY</span></div>
+      <textarea id="body" placeholder="Paste email body here..."></textarea>
+    </div>
+
+    <div class="divider">— OR —</div>
+
+    <div class="terminal-box">
+      <div class="label">&gt; <span>UPLOAD_EML_FILE</span></div>
+      <input type="file" id="emlFile" accept=".eml" />
+    </div>
+
+    <button class="btn" id="scanBtn" onclick="analyze()">[ RUN SCAN ]</button>
+
+    <div class="output" id="output">
+      <div class="line bright" id="log1"></div>
+      <div class="line bright" id="log2"></div>
+      <div class="line bright" id="log3"></div>
+
+      <div class="result-bar-wrap">
+        <div class="result-bar" id="bar"></div>
+        <div class="result-label" id="barLabel"></div>
+      </div>
+
+      <div class="verdict" id="verdict"></div>
+      <div class="triggers" id="triggers"></div>
+    </div>
+
+    <div class="dashboard" id="dashboard" style="display:none;">
+      <div class="dash-title">&gt; THREAT_ANALYSIS_DASHBOARD</div>
+      <div class="dash-grid">
+        <div class="dash-box">
+          <div class="dash-subtitle">// FEATURE SCORES</div>
+          <div class="feature-bars" id="featureBars"></div>
+        </div>
+        <div class="dash-box">
+          <div class="dash-subtitle">// RISK BREAKDOWN</div>
+          <canvas id="pieChart" width="200" height="200"></canvas>
+          <div class="pie-legend" id="pieLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      // ENSIA — COMPUTER & NETWORK SECURITY — 2025/2026 //
+    </div>
+
+  </div>
+
+  <script>
+    const examples = {
+      paypal: {
+        sender:  'security-alert@paypal-verify.com',
+        subject: 'Your account has been suspended immediately',
+        body:    `Dear Customer,\n\nWe have detected unusual activity on your PayPal account.\nYour account has been suspended until you verify your identity.\n\nPlease click the link below immediately to restore access:\nhttp://192.168.1.1/paypal/verify/login.php\n\nYou must confirm your account details within 24 hours or your account will be permanently limited.\n\nClick here to verify: http://bit.ly/3xPa9secure\n\nThank you,\nPayPal Security Team`
+      },
+      bank: {
+        sender:  'alert@your-bank-secure.net',
+        subject: 'Urgent: Confirm your bank account now',
+        body:    `Dear Valued Customer,\n\nYour bank account has been temporarily suspended due to suspicious login attempts.\n\nTo restore access, please verify your credentials immediately:\nhttp://203.0.113.5/bank/login/confirm.php\n\nFailure to verify within 12 hours will result in permanent account suspension.\n\nClick now: http://tinyurl.com/bankverify99\n\nBank Security Team`
+      },
+      prize: {
+        sender:  'winner@global-lottery-2026.com',
+        subject: 'Congratulations! You have won $1,000,000',
+        body:    `Dear Lucky Winner,\n\nYou have been selected as the winner of our Global Lottery 2026!\nYour prize is $1,000,000 USD.\n\nTo claim your prize immediately, click the link below:\nhttp://bit.ly/claim-prize-now\n\nYou must confirm your details urgently within 48 hours.\n\nCongratulations,\nGlobal Lottery Committee`
+      },
+      legit: {
+        sender:  'newsletter@github.com',
+        subject: 'Your monthly GitHub activity summary',
+        body:    `Hi there,\n\nHere is your GitHub activity summary for March 2026.\n\nRepositories updated: 3\nPull requests merged: 7\nIssues closed: 12\nCommits this month: 45\n\nKeep up the great work!\n\nThe GitHub Team\nhttps://github.com`
+      }
+    };
+
+    function loadExample(type) {
+      const ex = examples[type];
+      document.getElementById('sender').value  = ex.sender;
+      document.getElementById('subject').value = ex.subject;
+      document.getElementById('body').value    = ex.body;
+      document.getElementById('output').style.display    = 'none';
+      document.getElementById('dashboard').style.display = 'none';
+    }
+
+    async function analyze() {
+      const sender  = document.getElementById('sender').value;
+      const subject = document.getElementById('subject').value;
+      const body    = document.getElementById('body').value;
+      const emlFile = document.getElementById('emlFile').files[0];
+      const btn     = document.getElementById('scanBtn');
+      const output  = document.getElementById('output');
+
+      if (!body.trim() && !emlFile) {
+        alert('Please paste email body or upload a .eml file.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '[ SCANNING... ]';
+      output.style.display = 'none';
+      document.getElementById('dashboard').style.display = 'none';
+
+      let data;
+
+      if (emlFile) {
+        await typeLog('log1', '> Loading .eml file...');
+        await typeLog('log2', '> Parsing email headers and body...');
+        const formData = new FormData();
+        formData.append('file', emlFile);
+        const res = await fetch('/analyze-eml', { method: 'POST', body: formData });
+        data = await res.json();
+        if (data.sender)  document.getElementById('sender').value  = data.sender;
+        if (data.subject) document.getElementById('subject').value = data.subject;
+      } else {
+        await typeLog('log1', '> Initializing PhishScan engine...');
+        await typeLog('log2', '> Extracting email features...');
+        const res = await fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sender, subject, body })
+        });
+        data = await res.json();
+      }
+
+      await typeLog('log3', `> Analysis complete — ${data.probability}% phishing probability`);
+
+      const bar     = document.getElementById('bar');
+      const label   = document.getElementById('barLabel');
+      const verdict = document.getElementById('verdict');
+
+      let colorClass;
+      if (data.probability < 30)      colorClass = 'safe';
+      else if (data.probability < 60) colorClass = 'warn';
+      else                             colorClass = 'phish';
+
+      bar.className = 'result-bar ' + colorClass;
+      label.textContent = data.probability + '%';
+      setTimeout(() => { bar.style.width = data.probability + '%'; }, 100);
+
+      verdict.className = 'verdict ' + colorClass;
+      if (colorClass === 'safe')      verdict.textContent = '✓ EMAIL APPEARS LEGITIMATE';
+      else if (colorClass === 'warn') verdict.textContent = '⚠ SUSPICIOUS EMAIL';
+      else                            verdict.textContent = '⚠ PHISHING DETECTED';
+
+      const tDiv = document.getElementById('triggers');
+      tDiv.innerHTML = data.triggers.map(t =>
+        `<div class="t ${t.startsWith('[ok]') ? 'ok' : ''}">${t}</div>`
+      ).join('');
+
+      output.style.display = 'block';
+      buildDashboard(data);
+
+      btn.disabled = false;
+      btn.textContent = '[ RUN SCAN ]';
+    }
+
+    function buildDashboard(data) {
+      const dashboard = document.getElementById('dashboard');
+      dashboard.style.display = 'block';
+
+      const featureData = [
+        { label: 'URL COUNT',       value: data.features.url_count,       max: 10, triggered: data.features.url_count > 0 },
+        { label: 'IP-BASED URL',    value: data.features.has_ip_url,      max: 1,  triggered: data.features.has_ip_url === 1 },
+        { label: 'URL SHORTENER',   value: data.features.has_short_url,   max: 1,  triggered: data.features.has_short_url === 1 },
+        { label: 'URGENT KEYWORDS', value: data.features.urgent_keyword,  max: 10, triggered: data.features.urgent_keyword > 0 },
+        { label: 'FREE EMAIL',      value: data.features.is_free_email,   max: 1,  triggered: data.features.is_free_email === 1 },
+        { label: 'SUBJECT URGENT',  value: data.features.subject_urgent,  max: 1,  triggered: data.features.subject_urgent === 1 },
+        { label: 'HTML CONTENT',    value: data.features.has_html,        max: 1,  triggered: data.features.has_html === 1 },
+        { label: 'HTML RATIO',      value: data.features.html_text_ratio, max: 1,  triggered: data.features.html_text_ratio > 0.1 },
+      ];
+
+      const barsDiv = document.getElementById('featureBars');
+      barsDiv.innerHTML = featureData.map((f, i) => {
+        const cls = f.triggered ? 'triggered' : 'clean';
+        return `
+          <div class="feature-bar-row">
+            <div class="feature-bar-label">
+              <span>${f.label}</span>
+              <span style="color:${f.triggered ? '#ff3131' : '#00ff41'}">${f.value}</span>
+            </div>
+            <div class="feature-bar-track">
+              <div class="feature-bar-fill ${cls}" id="fbar${i}" style="width:0%"></div>
+            </div>
+          </div>`;
+      }).join('');
+
+      setTimeout(() => {
+        featureData.forEach((f, i) => {
+          const pct = Math.min((f.value / f.max) * 100, 100);
+          document.getElementById(`fbar${i}`).style.width = pct + '%';
+        });
+      }, 100);
+
+      const triggered = featureData.filter(f => f.triggered).length;
+      const clean     = featureData.length - triggered;
+      drawPie(triggered, clean);
+    }
+
+    function drawPie(triggered, clean) {
+      const canvas = document.getElementById('pieChart');
+      const ctx    = canvas.getContext('2d');
+      const total  = triggered + clean;
+      const cx = 100, cy = 100, r = 80;
+
+      ctx.clearRect(0, 0, 200, 200);
+
+      const slices = [
+        { value: triggered, color: '#ff3131' },
+        { value: clean,     color: '#00ff41' }
+      ];
+
+      let startAngle = -Math.PI / 2;
+      slices.forEach(slice => {
+        if (slice.value === 0) return;
+        const angle = (slice.value / total) * 2 * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, startAngle + angle);
+        ctx.closePath();
+        ctx.fillStyle = slice.color;
+        ctx.fill();
+        ctx.strokeStyle = '#0a0a0a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        startAngle += angle;
+      });
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 40, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fill();
+
+      ctx.fillStyle = '#00ff41';
+      ctx.font = '14px Share Tech Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(triggered + '/' + total, cx, cy + 5);
+
+      document.getElementById('pieLegend').innerHTML = `
+        <div style="color:#ff3131">■ TRIGGERED: ${triggered} features</div>
+        <div style="color:#00ff41">■ CLEAN: ${clean} features</div>
+      `;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function typeLog(id, text) {
+      const el = document.getElementById(id);
+      el.textContent = '';
+      for (let c of text) {
+        el.textContent += c;
+        await sleep(18);
+      }
+    }
+  </script>
+</body>
+</html>
