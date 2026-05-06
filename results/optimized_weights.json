@@ -1,0 +1,81 @@
+{
+  "best_model": "Gradient Boosting",
+  "optimal_threshold": 0.36,
+  "dataset_features": [
+    "url_count",
+    "has_ip_url",
+    "has_short_url",
+    "urgent_keyword",
+    "is_free_email",
+    "subject_urgent",
+    "body_length",
+    "has_html",
+    "html_text_ratio",
+    "urls"
+  ],
+  "ensemble_importance": {
+    "url_count": 0.117145,
+    "has_ip_url": 0.015601,
+    "has_short_url": 0.004434,
+    "urgent_keyword": 0.023451,
+    "is_free_email": 0.060585,
+    "subject_urgent": 0.018352,
+    "body_length": 0.625416,
+    "has_html": 0.00167,
+    "html_text_ratio": 0.115316,
+    "urls": 0.01803
+  },
+  "data_driven_max_scores": {
+    "url_count": 6,
+    "has_ip_url": 4,
+    "has_short_url": 4,
+    "urgent_keyword": 4,
+    "is_free_email": 5,
+    "subject_urgent": 4,
+    "body_length": 15,
+    "has_html": 4,
+    "html_text_ratio": 6,
+    "urls": 4
+  },
+  "low_importance_features": [
+    "has_ip_url",
+    "has_short_url",
+    "urgent_keyword",
+    "subject_urgent",
+    "has_html",
+    "urls"
+  ],
+  "metrics": {
+    "Logistic Regression": {
+      "accuracy": 0.666,
+      "precision": 0.6273,
+      "recall": 0.9399,
+      "f1": 0.7524,
+      "auc": 0.8275,
+      "cv_accuracy": 0.668,
+      "cv_f1": 0.7536,
+      "cv_auc": 0.8215
+    },
+    "Random Forest": {
+      "accuracy": 0.8712,
+      "precision": 0.8669,
+      "recall": 0.8995,
+      "f1": 0.8829,
+      "auc": 0.9287,
+      "cv_accuracy": 0.8683,
+      "cv_f1": 0.88,
+      "cv_auc": 0.928
+    },
+    "Gradient Boosting": {
+      "accuracy": 0.8813,
+      "precision": 0.89,
+      "recall": 0.8901,
+      "f1": 0.8901,
+      "auc": 0.9416,
+      "cv_accuracy": 0.8816,
+      "cv_f1": 0.89,
+      "cv_auc": 0.9398
+    }
+  },
+  "note": "Features not in dataset (brand_impersonation, link_text_mismatch, form_presence, subdomain_depth, domain_age, ssl_validity) retain literature-based weights from the PFE design document."
+}

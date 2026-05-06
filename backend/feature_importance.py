@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import joblib
 
-model = joblib.load('model/best_model.pkl')
+model = joblib.load('../model/best_model.pkl')
 
 features = ['url_count', 'has_ip_url', 'has_short_url',
             'urgent_keyword', 'is_free_email', 'subject_urgent',
@@ -24,4 +24,4 @@ plt.gca().spines['left'].set_color('#00ff41')
 plt.tight_layout()
 plt.savefig('../results/feature_importance.png',
             facecolor='#0a0a0a', edgecolor='none')
-print("✅ feature_importance.png saved!")
+print("[OK] feature_importance.png saved!")

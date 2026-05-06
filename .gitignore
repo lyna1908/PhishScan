@@ -1,4 +1,13 @@
-# Large data files
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+
+# Large data files (too big for Git)
 data/CEAS_08.csv
 data/SpamAssasin.csv
 data/Nazario.csv
@@ -6,10 +15,10 @@ data/emails.csv
 data/emails_parsed.csv
 data/features.csv
 
-# Python
-__pycache__/
-*.pyc
-.env
+# Model binary (large file — distribute separately or via Git LFS)
+model/best_model.pkl
 
-# VS Code
+# IDE & OS
 .vscode/
+.DS_Store
+Thumbs.db

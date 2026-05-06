@@ -1,0 +1,63 @@
+============================================================
+  PhishScan --- Optimization Report
+============================================================
+
+Dataset: data/features.csv
+Samples: 46,527  |  Features: 10
+Class distribution: {1: np.int64(25124), 0: np.int64(21403)}
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  MODEL COMPARISON (5-fold cross-validation)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Logistic Regression:
+  Accuracy  (CV): 0.6680
+  F1-Score  (CV): 0.7536
+  ROC-AUC   (CV): 0.8215
+
+Random Forest:
+  Accuracy  (CV): 0.8683
+  F1-Score  (CV): 0.8800
+  ROC-AUC   (CV): 0.9280
+
+Gradient Boosting:
+  Accuracy  (CV): 0.8816
+  F1-Score  (CV): 0.8900
+  ROC-AUC   (CV): 0.9398
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  BEST MODEL & THRESHOLD
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Best model:          Gradient Boosting
+  Optimal threshold:   0.36
+  F1 at threshold:     0.8888
+  Recall at threshold: 0.9128
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  DATA-DRIVEN FEATURE WEIGHTS
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  body_length          importance=0.6254  max_score=15
+  url_count            importance=0.1171  max_score=6
+  html_text_ratio      importance=0.1153  max_score=6
+  is_free_email        importance=0.0606  max_score=5
+  urgent_keyword       importance=0.0235  max_score=4
+  subject_urgent       importance=0.0184  max_score=4
+  urls                 importance=0.0180  max_score=4
+  has_ip_url           importance=0.0156  max_score=4
+  has_short_url        importance=0.0044  max_score=4
+  has_html             importance=0.0017  max_score=4
+
+  LOW-IMPACT FEATURES: ['has_ip_url', 'has_short_url', 'urgent_keyword', 'subject_urgent', 'has_html', 'urls']
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  RECOMMENDATION
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  Use Gradient Boosting as the primary classifier.
+  Apply threshold = 0.36 (optimized for F1).
+  Update app.py MAX_SCORES with the data_driven_max_scores above.
+  Features with importance < 0.05 can be removed to reduce complexity.
+
+  For the 6 runtime features (brand_impersonation, link_text_mismatch,
+  form_presence, subdomain_depth, domain_age, ssl_validity), retain
+  literature-based weights --- they cannot be validated on this dataset.

@@ -6,8 +6,8 @@ df = pd.read_csv('../data/emails_parsed.csv')
 
 shorteners = ['bit.ly', 'tinyurl', 'goo.gl', 't.co', 'ow.ly', 'short.io']
 urgent_words = ['verify', 'suspended', 'immediately', 'click now',
-                'confirm', 'limited', 'urgent', 'account', 'winner',
-                'password', 'update', 'login', 'secure', 'bank']
+                'confirm', 'limited', 'urgent', 'winner',
+                'password', 'bank', 'credit card', 'ssn']
 free_providers = ['gmail.com', 'yahoo.com', 'hotmail.com',
                   'outlook.com', 'aol.com', 'mail.com']
 
@@ -74,4 +74,4 @@ features = df[[
 print("Feature matrix shape:", features.shape)
 print("\nSample:\n", features.head())
 features.to_csv('../data/features.csv', index=False)
-print("\n✅ features.csv saved!")
+print("\n[OK] features.csv saved!")

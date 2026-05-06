@@ -33,7 +33,7 @@ models = {
 results = {}
 
 for name, model in models.items():
-    print(f"\n⏳ Training {name}...")
+    print(f"\nTraining {name}...")
     model.fit(X_train, y_train)
     y_pred  = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
@@ -64,7 +64,7 @@ for ax, (name, res) in zip(axes, results.items()):
     ax.set_ylabel('Actual')
 plt.tight_layout()
 plt.savefig('../results/confusion_matrices.png')
-print("\n✅ confusion_matrices.png saved!")
+print("\n[OK] confusion_matrices.png saved!")
 
 # ── ROC curves ───────────────────────────────────────────────────
 from sklearn.metrics import roc_curve
@@ -79,11 +79,11 @@ plt.ylabel('True Positive Rate')
 plt.title('ROC Curves')
 plt.legend()
 plt.savefig('../results/roc_curves.png')
-print("✅ roc_curves.png saved!")
+print("[OK] roc_curves.png saved!")
 
 # ── Select and save best model ────────────────────────────────────
 best_name = max(results, key=lambda x: results[x]['f1'])
 best_model = results[best_name]['model']
-print(f"\n🏆 Best model: {best_name} (F1={results[best_name]['f1']:.4f})")
-joblib.dump(best_model, 'model/best_model.pkl')
-print("✅ best_model.pkl saved!")
+print(f"\n[BEST] Best model: {best_name} (F1={results[best_name]['f1']:.4f})")
+joblib.dump(best_model, '../model/best_model.pkl')
+print("[OK] best_model.pkl saved!")

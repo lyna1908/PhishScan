@@ -372,9 +372,9 @@
         body:    `Dear Lucky Winner,\n\nYou have been selected as the winner of our Global Lottery 2026!\nYour prize is $1,000,000 USD.\n\nTo claim your prize immediately, click the link below:\nhttp://bit.ly/claim-prize-now\n\nYou must confirm your details urgently within 48 hours.\n\nCongratulations,\nGlobal Lottery Committee`
       },
       legit: {
-        sender:  'newsletter@github.com',
-        subject: 'Your monthly GitHub activity summary',
-        body:    `Hi there,\n\nHere is your GitHub activity summary for March 2026.\n\nRepositories updated: 3\nPull requests merged: 7\nIssues closed: 12\nCommits this month: 45\n\nKeep up the great work!\n\nThe GitHub Team\nhttps://github.com`
+        sender:  'hr@university-alger.dz',
+        subject: 'Meeting scheduled for next Tuesday',
+        body:    `Hello team,\n\nThis is a reminder that we have a department meeting scheduled for next Tuesday at 10:00 AM in Room 204.\n\nAgenda:\n- Project status updates\n- Upcoming deadlines\n- Q&A session\n\nPlease bring your progress reports.\n\nBest regards,\nDr. Amina Benaissa\nDepartment of Computer Science`
       }
     };
 
@@ -406,46 +406,57 @@
       document.getElementById('dashboard').style.display = 'none';
 
       let data;
-
-      if (emlFile) {
-        await typeLog('log1', '> Loading .eml file...');
-        await typeLog('log2', '> Parsing email headers and body...');
-        const formData = new FormData();
-        formData.append('file', emlFile);
-        const res = await fetch('/analyze-eml', { method: 'POST', body: formData });
-        data = await res.json();
-        if (data.sender)  document.getElementById('sender').value  = data.sender;
-        if (data.subject) document.getElementById('subject').value = data.subject;
-      } else {
-        await typeLog('log1', '> Initializing PhishScan engine...');
-        await typeLog('log2', '> Extracting email features...');
-        const res = await fetch('/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sender, subject, body })
-        });
-        data = await res.json();
+      try {
+        if (emlFile) {
+          await typeLog('log1', '> Loading .eml file...');
+          await typeLog('log2', '> Parsing email headers and body...');
+          const formData = new FormData();
+          formData.append('file', emlFile);
+          const res = await fetch('/analyze-eml', { method: 'POST', body: formData });
+          data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to analyze .eml file');
+          if (data.sender)  document.getElementById('sender').value  = data.sender;
+          if (data.subject) document.getElementById('subject').value = data.subject;
+          if (data.body)    document.getElementById('body').value    = data.body;
+        } else {
+          await typeLog('log1', '> Initializing PhishScan engine...');
+          await typeLog('log2', '> Extracting email features...');
+          const res = await fetch('/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sender, subject, body })
+          });
+          data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to analyze email');
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '[ RUN SCAN ]';
+        output.style.display = 'none';
+        alert(err.message || 'Upload failed. Please try again.');
+        return;
       }
 
-      await typeLog('log3', `> Analysis complete — ${data.probability}% phishing probability`);
+      const mlNote = data.ml_probability !== null ? ` // ML: ${data.ml_probability}%` : '';
+      await typeLog('log3', `> Risk score: ${data.risk_score}/${data.max_score}${mlNote}`);
 
       const bar     = document.getElementById('bar');
       const label   = document.getElementById('barLabel');
       const verdict = document.getElementById('verdict');
 
       let colorClass;
-      if (data.probability < 30)      colorClass = 'safe';
-      else if (data.probability < 60) colorClass = 'warn';
+      if (data.risk_score <= 20)      colorClass = 'safe';
+      else if (data.risk_score <= 50) colorClass = 'warn';
       else                             colorClass = 'phish';
 
       bar.className = 'result-bar ' + colorClass;
-      label.textContent = data.probability + '%';
-      setTimeout(() => { bar.style.width = data.probability + '%'; }, 100);
+      label.textContent = data.risk_score + ' / ' + data.max_score;
+      setTimeout(() => { bar.style.width = data.risk_pct + '%'; }, 100);
 
       verdict.className = 'verdict ' + colorClass;
-      if (colorClass === 'safe')      verdict.textContent = '✓ EMAIL APPEARS LEGITIMATE';
-      else if (colorClass === 'warn') verdict.textContent = '⚠ SUSPICIOUS EMAIL';
-      else                            verdict.textContent = '⚠ PHISHING DETECTED';
+      if (colorClass === 'safe')      verdict.textContent = '[OK] EMAIL APPEARS LEGITIMATE';
+      else if (colorClass === 'warn') verdict.textContent = '[!] SUSPICIOUS EMAIL';
+      else                            verdict.textContent = '[!] PHISHING DETECTED';
 
       const tDiv = document.getElementById('triggers');
       tDiv.innerHTML = data.triggers.map(t =>
@@ -463,25 +474,35 @@
       const dashboard = document.getElementById('dashboard');
       dashboard.style.display = 'block';
 
+      const s = data.scores;
+      const m = data.max_scores;
       const featureData = [
-        { label: 'URL COUNT',       value: data.features.url_count,       max: 10, triggered: data.features.url_count > 0 },
-        { label: 'IP-BASED URL',    value: data.features.has_ip_url,      max: 1,  triggered: data.features.has_ip_url === 1 },
-        { label: 'URL SHORTENER',   value: data.features.has_short_url,   max: 1,  triggered: data.features.has_short_url === 1 },
-        { label: 'URGENT KEYWORDS', value: data.features.urgent_keyword,  max: 10, triggered: data.features.urgent_keyword > 0 },
-        { label: 'FREE EMAIL',      value: data.features.is_free_email,   max: 1,  triggered: data.features.is_free_email === 1 },
-        { label: 'SUBJECT URGENT',  value: data.features.subject_urgent,  max: 1,  triggered: data.features.subject_urgent === 1 },
-        { label: 'HTML CONTENT',    value: data.features.has_html,        max: 1,  triggered: data.features.has_html === 1 },
-        { label: 'HTML RATIO',      value: data.features.html_text_ratio, max: 1,  triggered: data.features.html_text_ratio > 0.1 },
+        { label: 'URL COUNT',           score: s.url_count,          max: m.url_count },
+        { label: 'IP-BASED URL',        score: s.ip_based_url,       max: m.ip_based_url },
+        { label: 'URL SHORTENER',       score: s.url_shortener,      max: m.url_shortener },
+        { label: 'URGENT KEYWORDS',     score: s.urgent_keywords,    max: m.urgent_keywords },
+        { label: 'DOMAIN TRUST',        score: s.domain_trust,       max: m.domain_trust },
+        { label: 'SUBJECT URGENT',      score: s.subject_urgent,     max: m.subject_urgent },
+        { label: 'HTML CONTENT',        score: s.html_content,       max: m.html_content },
+        { label: 'HTML RATIO',          score: s.html_ratio,         max: m.html_ratio },
+        { label: 'BODY LENGTH',         score: s.body_length,        max: m.body_length },
+        { label: 'BRAND IMPERSONATION', score: s.brand_impersonation,max: m.brand_impersonation },
+        { label: 'LINK MISMATCH',       score: s.link_text_mismatch, max: m.link_text_mismatch },
+        { label: 'FORM PRESENCE',       score: s.form_presence,      max: m.form_presence },
+        { label: 'SUBDOMAIN DEPTH',     score: s.subdomain_depth,    max: m.subdomain_depth },
+        { label: 'DOMAIN AGE',          score: s.domain_age,         max: m.domain_age },
+        { label: 'SSL VALIDITY',        score: s.ssl_validity,       max: m.ssl_validity },
       ];
 
       const barsDiv = document.getElementById('featureBars');
       barsDiv.innerHTML = featureData.map((f, i) => {
-        const cls = f.triggered ? 'triggered' : 'clean';
+        const triggered = f.score > 0;
+        const cls = triggered ? 'triggered' : 'clean';
         return `
           <div class="feature-bar-row">
             <div class="feature-bar-label">
               <span>${f.label}</span>
-              <span style="color:${f.triggered ? '#ff3131' : '#00ff41'}">${f.value}</span>
+              <span style="color:${triggered ? '#ff3131' : '#00ff41'}">${f.score} / ${f.max}</span>
             </div>
             <div class="feature-bar-track">
               <div class="feature-bar-fill ${cls}" id="fbar${i}" style="width:0%"></div>
@@ -491,12 +512,12 @@
 
       setTimeout(() => {
         featureData.forEach((f, i) => {
-          const pct = Math.min((f.value / f.max) * 100, 100);
+          const pct = f.max > 0 ? Math.min((f.score / f.max) * 100, 100) : 0;
           document.getElementById(`fbar${i}`).style.width = pct + '%';
         });
       }, 100);
 
-      const triggered = featureData.filter(f => f.triggered).length;
+      const triggered = featureData.filter(f => f.score > 0).length;
       const clean     = featureData.length - triggered;
       drawPie(triggered, clean);
     }
