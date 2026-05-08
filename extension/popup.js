@@ -8,15 +8,15 @@ const resultTitle = byId('resultTitle');
 const resultSub = byId('resultSub');
 
 let latestEmail = { sender: '', subject: '', body: '' };
-let savedBaseUrl = 'http://localhost:5000';
+let savedBaseUrl = 'https://phishscan-1-jdzg.onrender.com';
 
 chrome.storage.sync.get(['phishscanBaseUrl'], (result) => {
-  savedBaseUrl = (result.phishscanBaseUrl || 'http://localhost:5000').trim();
+  savedBaseUrl = (result.phishscanBaseUrl || 'https://phishscan-1-jdzg.onrender.com').trim();
   byId('apiUrl').value = savedBaseUrl;
 });
 
 function getBaseUrl() {
-  return (savedBaseUrl || 'http://localhost:5000').trim().replace(/\/$/, '');
+  return (savedBaseUrl || 'https://phishscan-1-jdzg.onrender.com').trim().replace(/\/$/, '');
 }
 
 function openAnalysisPage(sender, subject, body) {
