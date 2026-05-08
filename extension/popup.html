@@ -20,6 +20,9 @@
     .safe { color: #72ff72; }
     .warn { color: #ff8c00; }
     .phish { color: #ff6767; }
+    .settings-btn { background: none; border: none; color: #9cb39c; cursor: pointer; padding: 0; font-size: 12px; float: right; margin-top: 4px; }
+    .settings-btn:hover { color: #72ff72; text-decoration: underline; }
+    #settingsBox { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #2f4f2f; }
   </style>
 </head>
 <body>
@@ -33,6 +36,13 @@
   </div>
 
   <button id="openAnalysis" style="display:none;">More Details</button>
+
+  <button id="toggleSettings" class="settings-btn">Settings</button>
+  <div id="settingsBox">
+    <label for="apiUrl">API URL:</label>
+    <input type="text" id="apiUrl" placeholder="http://localhost:5000" />
+    <button id="saveSettings" style="margin-top: 5px; padding: 5px; font-size: 11px;">Save & Refresh</button>
+  </div>
 
   <script src="popup.js"></script>
 </body>

@@ -12,6 +12,7 @@ let savedBaseUrl = 'http://localhost:5000';
 
 chrome.storage.sync.get(['phishscanBaseUrl'], (result) => {
   savedBaseUrl = (result.phishscanBaseUrl || 'http://localhost:5000').trim();
+  byId('apiUrl').value = savedBaseUrl;
 });
 
 function getBaseUrl() {
@@ -108,4 +109,18 @@ analyzeCurrentBtn.addEventListener('click', () => {
       }
     });
   });
+});
+
+byId('toggleSettings').addEventListener('click', () => {
+  const box = byId('settingsBox');
+  box.style.display = box.style.display === 'block' ? 'none' : 'block';
+});
+
+byId('saveSettings').addEventListener('click', () => {
+  const newUrl = byId('apiUrl').value.trim();
+  if (newUrl) {
+    chrome.storage.sync.set({ phishscanBaseUrl: newUrl }, () => {
+      location.reload();
+    });
+  }
 });
