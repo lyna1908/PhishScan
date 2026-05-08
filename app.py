@@ -1,13 +1,16 @@
 from flask import Flask, render_template, request, jsonify, send_file
+from flask_cors import CORS
 import joblib, re, email, urllib.parse
 import io, os, zipfile
 from datetime import datetime
 
 app = Flask(__name__, template_folder='frontend/templates')
+CORS(app)
 
 # ML model kept as secondary confidence signal
 try:
-    _ml_model    = joblib.load('model/best_model.pkl')
+    model_path = os.path.join(os.path.dirname(__file__), 'backend', 'model', 'best_model.pkl')
+    _ml_model    = joblib.load(model_path)
     ML_AVAILABLE = True
 except Exception:
     ML_AVAILABLE = False
