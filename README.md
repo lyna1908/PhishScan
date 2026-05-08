@@ -10,33 +10,29 @@ A machine-learning-powered web application that detects phishing emails using ha
 phishing/
 ├── app.py                   # Flask web server (main entry point)
 ├── requirements.txt         # Python dependencies
-├── Procfile                 # Deployment config (Heroku / gunicorn)
+├── Procfile                 # Deployment config (Render / gunicorn)
 ├── .gitignore
+├── README.md
 │
-├── backend/                 # Data pipeline & ML training scripts
-│   ├── prepare_data.py      # Step 1 — merge & clean raw datasets
-│   ├── features.py          # Step 2 — extract features → data/features.csv
-│   ├── train.py             # Step 3 — train models, save best_model.pkl
-│   └── feature_importance.py# Step 4 — plot feature importance chart
+├── extension/               # Browser extension files
+│   ├── manifest.json
+│   ├── popup.html
+│   └── popup.js
 │
-├── model/
-│   └── best_model.pkl       # Trained Random Forest model (ignored by git)
+├── backend/                 # ML training scripts
+│   ├── prepare_data.py
+│   ├── features.py
+│   ├── train.py
+│   └── feature_importance.py
+│   └── model/
+│       └── best_model.pkl   # ML Model
 │
 ├── frontend/
 │   └── templates/
-│       └── index.html       # Single-page UI (served by Flask)
+│       └── index.html       # Web UI
 │
-├── data/                    # Raw & processed datasets (ignored by git)
-│   ├── CEAS_08.csv
-│   ├── Nazario.csv
-│   ├── SpamAssasin.csv
-│   ├── emails_parsed.csv
-│   └── features.csv
-│
-└── results/                 # Evaluation plots
-    ├── confusion_matrices.png
-    ├── roc_curves.png
-    └── feature_importance.png
+├── results/                 # Evaluation plots
+└── data/                    # Datasets (ignored)
 ```
 
 ---
