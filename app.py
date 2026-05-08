@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import joblib, re, email, urllib.parse
+import io, os, zipfile
 from datetime import datetime
 
 app = Flask(__name__, template_folder='frontend/templates')
@@ -62,9 +63,12 @@ MAX_SCORES = {
     'ssl_validity':        6,
 }
 MAX_TOTAL   = sum(MAX_SCORES.values())   # 120
-RISK_LOW    = 15   # 0-12.5% of max → LEGITIMATE
-RISK_MEDIUM = 40   # 12.5-33%  of max → SUSPICIOUS
-# > 40 → PHISHING DETECTED
+# Heuristic-only fallback thresholds (used when ML is unavailable)
+RISK_LOW_PCT    = 30.0
+RISK_MEDIUM_PCT = 59.5
+
+# From results/optimized_weights.json
+ML_OPTIMAL_THRESHOLD = 36.0
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def _domain(sender):
@@ -83,8 +87,9 @@ def _url_protocol_flags(urls):
 def s_url_count(urls):
     n = len(urls)
     if n == 0: return 0
-    if n == 1: return 2
-    if n <= 3: return 4
+    if n == 1: return 1
+    if n <= 2: return 3
+    if n <= 4: return 5
     return 6   # max=6
 
 def s_ip_url(body):
@@ -95,21 +100,32 @@ def s_shortener(body):
 
 def s_urgent_kw(body, subject):
     text = (body + ' ' + subject).lower()
-    return min(sum(w in text for w in URGENT_WORDS) * 1, 4)   # max=4
+    hits = sum(1 for w in URGENT_WORDS if w in text)
+    if hits == 0: return 0
+    if hits == 1: return 1
+    if hits == 2: return 2
+    if hits == 3: return 3
+    return 4   # max=4
 
 def s_domain_trust(domain):
-    if not domain: return 5
+    if not domain:
+        return 5
     score = 0
-    if domain in FREE_EMAIL: score += 5
-    base = domain.split('.')[0]
+    base = (domain.split('.')[0] if domain else '').lower()
+
+    if domain in FREE_EMAIL:
+        score += 2
     for brand, official in BRAND_DOMAINS.items():
         if brand in domain and domain != official:
-            score += 10; break
-    if re.match(r'^[\d\-]+$', base): score += 8
-    elif len(base) > 4:
+            score += 3
+            break
+    if re.match(r'^[\d\-]+$', base):
+        score += 2
+    elif len(base) >= 10:
         vowels = sum(c in 'aeiou' for c in base)
-        if vowels / len(base) < 0.2: score += 4
-    return min(score, 10)
+        if len(base) > 0 and (vowels / len(base)) < 0.25:
+            score += 1
+    return min(score, MAX_SCORES['domain_trust'])
 
 def s_subject_urgent(subject):
     return 4 if any(w in subject.lower() for w in URGENT_WORDS) else 0   # max=4
@@ -120,32 +136,62 @@ def s_html_content(body):
 def s_html_ratio(body):
     if not body: return 0
     tags = re.findall(r'<[^>]+>', body)
-    return 6 if (len(tags) / len(body)) > 0.3 else 0   # max=6
+    ratio = len(tags) / max(len(body), 1)
+    if ratio >= 0.18: return 6
+    if ratio >= 0.10: return 4
+    if ratio >= 0.05: return 2
+    return 0   # max=6
 
 def s_body_length(body):
-    # DOMINANT feature (importance=0.625). Thresholds rescaled to max=15.
-    n = len(body)
-    if n < 80:    return 15   # extremely short — high risk
-    if n < 200:   return 8    # short but possible
-    if n <= 800:  return 0    # normal email length — no penalty
-    if n <= 2000: return 3    # long — mild concern
-    return 6                  # very long — possible HTML payload
+    # Body length is useful, but should not dominate by itself.
+    n = len(body or '')
+    if n == 0:     return 12
+    if n < 40:     return 10
+    if n < 120:    return 6
+    if n <= 1200:  return 0
+    if n <= 3000:  return 3
+    return 5
 
 def s_brand_impersonation(body, subject, domain):
     text = (body + ' ' + subject).lower()
+    urls = _urls(body)
+    url_hosts = []
+    for u in urls:
+        try:
+            host = urllib.parse.urlparse(u).hostname
+            url_hosts.append(host or '')
+        except Exception:
+            pass
+
     for brand, official in BRAND_DOMAINS.items():
-        if brand in text and domain != official:
-            return 14
+        if brand not in text:
+            continue
+
+        sender_is_official = (domain == official)
+        urls_are_official = all((official in h) for h in url_hosts) if url_hosts else False
+        if sender_is_official and urls_are_official:
+            continue
+        return 14
     return 0
 
 def s_link_mismatch(body):
-    if not BS4: return 0
+    if not BS4:
+        return 0
     try:
         for a in BeautifulSoup(body, 'html.parser').find_all('a', href=True):
-            hd = re.search(r'https?://([^/\s]+)', a['href'])
-            td = re.search(r'https?://([^/\s]+)', a.get_text())
-            if hd and td and hd.group(1) != td.group(1):
+            href = a.get('href', '').strip()
+            text = a.get_text(' ', strip=True).lower()
+            hd = re.search(r'https?://([^/\s]+)', href)
+            td = re.search(r'https?://([^/\s]+)', text)
+
+            if hd and td and hd.group(1).lower() != td.group(1).lower():
                 return 15
+
+            if hd:
+                href_host = hd.group(1).lower()
+                for brand, official in BRAND_DOMAINS.items():
+                    if brand in text and official not in href_host:
+                        return 15
     except Exception:
         pass
     return 0
@@ -153,15 +199,21 @@ def s_link_mismatch(body):
 def s_form_presence(body):
     if BS4:
         try:
-            soup  = BeautifulSoup(body, 'html.parser')
+            soup = BeautifulSoup(body, 'html.parser')
             forms = soup.find_all('form')
+            if not forms:
+                return 0
+
             for f in forms:
-                if re.search(r'https?://', f.get('action', '')):
+                action = (f.get('action', '') or '').lower()
+                inputs = ' '.join((i.get('type', '') or '').lower() for i in f.find_all('input'))
+                looks_credential = any(k in inputs for k in ['password', 'email', 'tel'])
+                if re.search(r'https?://', action) and looks_credential:
                     return 13
-            return 4 if forms else 0
+            return 4
         except Exception:
             pass
-    return 4 if re.search(r'<form', body, re.IGNORECASE) else 0
+    return 4 if re.search(r'<form', body or '', re.IGNORECASE) else 0
 
 def s_subdomain_depth(urls):
     max_d = 0
@@ -239,8 +291,49 @@ def _apply_consistency_rules(scores, domain, urls, ssl_state):
 
     return scores, notes
 
+def _cap_scores(scores):
+    """
+    Safety clamp: no feature score may exceed its declared max or go negative.
+    """
+    capped = {}
+    notes = []
+    for k, v in scores.items():
+        max_v = MAX_SCORES.get(k, v)
+        new_v = max(0, min(v, max_v))
+        capped[k] = new_v
+        if new_v != v:
+            notes.append(f'Adjusted {k}: capped from {v} to {new_v}.')
+    return capped, notes
+
+def _combine_verdict(heuristic_pct, ml_proba):
+    """
+    Final decision strategy based on user thresholds:
+      - If 0 heuristic features triggered -> Always LEGITIMATE (Safe Override)
+      - > 59.5%: PHISHING DETECTED
+      - 30% to 59.5%: SUSPICIOUS
+      - < 30%: LEGITIMATE
+    """
+    # Safe Override: If no heuristic indicators, force Legitimate
+    if heuristic_pct == 0:
+        return 'LEGITIMATE', 0, 0.0
+
+    if ml_proba is None:
+        risk = heuristic_pct
+    else:
+        risk = round((0.60 * ml_proba) + (0.40 * heuristic_pct), 1)
+
+    if risk >= RISK_MEDIUM_PCT:
+        return 'PHISHING DETECTED', 1, risk
+    if risk >= RISK_LOW_PCT:
+        return 'SUSPICIOUS', 0, risk
+    return 'LEGITIMATE', 0, risk
+
 # ── Core analysis ──────────────────────────────────────────────────────────────
 def analyze_email(sender, subject, body):
+    sender  = str(sender) if sender is not None else ''
+    subject = str(subject) if subject is not None else ''
+    body    = str(body) if body is not None else ''
+
     domain = _domain(sender)
     urls   = _urls(body)
     ssl_score, ssl_state = s_ssl_validity(urls)
@@ -263,16 +356,10 @@ def analyze_email(sender, subject, body):
         'ssl_validity':       ssl_score,
     }
     scores, consistency_notes = _apply_consistency_rules(scores, domain, urls, ssl_state)
+    scores, cap_notes = _cap_scores(scores)
 
     risk_score = sum(scores.values())
     risk_pct   = round(risk_score / MAX_TOTAL * 100, 1)
-
-    if risk_score <= RISK_LOW:
-        verdict, pred = 'LEGITIMATE', 0
-    elif risk_score <= RISK_MEDIUM:
-        verdict, pred = 'SUSPICIOUS', 0
-    else:
-        verdict, pred = 'PHISHING DETECTED', 1
 
     # ML model — secondary signal (shown in UI only)
     ml_proba = None
@@ -294,17 +381,20 @@ def analyze_email(sender, subject, body):
         except Exception:
             ml_proba = None
 
+    verdict, pred, combined_risk = _combine_verdict(risk_pct, ml_proba)
+
     triggers = _build_triggers(scores, len(urls), ssl_state)
 
     return {
         'risk_score':   risk_score,
         'max_score':    MAX_TOTAL,
         'risk_pct':     risk_pct,
+        'combined_risk': combined_risk,
         'verdict':      verdict,
         'prediction':   pred,
         'ml_probability': ml_proba,
         'ssl_state':     ssl_state,
-        'consistency_notes': consistency_notes,
+        'consistency_notes': consistency_notes + cap_notes,
         'triggers':     triggers,
         'scores':       scores,
         'max_scores':   MAX_SCORES,
@@ -320,7 +410,7 @@ def _build_triggers(scores, url_count, ssl_state):
     if scores['subject_urgent']     > 0:  t.append("[!] Urgency language in subject line")
     if scores['html_content']       > 0:  t.append("[!] HTML content embedded in body")
     if scores['html_ratio']         > 0:  t.append("[!] High HTML-to-text ratio")
-    if scores['body_length']        == 8: t.append("[!] Extremely short email body")
+    if scores['body_length']        >= 6: t.append("[!] Abnormal email body length pattern")
     if scores['brand_impersonation']> 0:  t.append("[!] Brand impersonation detected")
     if scores['link_text_mismatch'] > 0:  t.append("[!] Link text mismatches actual URL")
     if scores['form_presence']      > 0:  t.append("[!] HTML form collecting data detected")
@@ -375,7 +465,7 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    data    = request.json
+    data    = request.json or {}
     result  = analyze_email(
         data.get('sender', ''),
         data.get('subject', ''),
@@ -410,6 +500,28 @@ def analyze_eml():
     result['subject'] = subject
     result['body']    = body
     return jsonify(result)
+
+@app.route('/download-extension', methods=['GET'])
+def download_extension():
+    extension_dir = os.path.join(app.root_path, 'extension')
+    if not os.path.isdir(extension_dir):
+        return jsonify({'error': 'Extension folder not found'}), 404
+
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(extension_dir):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                arcname = os.path.relpath(file_path, extension_dir)
+                zf.write(file_path, arcname)
+    memory_file.seek(0)
+
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='phishscan-extension.zip'
+    )
 
 if __name__ == '__main__':
     import os

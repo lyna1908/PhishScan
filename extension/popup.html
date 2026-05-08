@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhishScan Quick Analyzer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 12px; width: 340px; background: #111; color: #e5ffe5; }
+    h1 { margin: 0 0 10px; font-size: 16px; color: #72ff72; }
+    label { font-size: 12px; display: block; margin: 8px 0 4px; }
+    input, textarea { width: 100%; box-sizing: border-box; border: 1px solid #2f4f2f; background: #0a0a0a; color: #d9ffd9; padding: 8px; border-radius: 4px; }
+    textarea { min-height: 88px; resize: vertical; }
+    button { width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #72ff72; background: transparent; color: #72ff72; cursor: pointer; }
+    button:hover { background: #143214; }
+    .muted { margin-top: 8px; font-size: 11px; color: #9cb39c; }
+    .status { margin-top: 8px; font-size: 11px; color: #ffd37a; min-height: 16px; }
+    .result { margin-top: 10px; border: 1px solid #2f4f2f; background: #0a0a0a; padding: 10px; display: none; }
+    .result-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .result-sub { font-size: 11px; color: #bdd8bd; }
+    .safe { color: #72ff72; }
+    .warn { color: #ff8c00; }
+    .phish { color: #ff6767; }
+  </style>
+</head>
+<body>
+  <h1>PhishScan Extension</h1>
+  <button id="analyzeCurrentEmail">Analyze Current Gmail Email</button>
+  <div class="status" id="status"></div>
+
+  <div class="result" id="resultBox">
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-sub" id="resultSub"></div>
+  </div>
+
+  <button id="openAnalysis" style="display:none;">More Details</button>
+
+  <script src="popup.js"></script>
+</body>
+</html>

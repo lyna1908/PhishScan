@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "PhishScan Quick Analyzer",
+  "description": "Analyze the currently opened email in Gmail with one click.",
+  "version": "1.2.0",
+  "action": {
+    "default_title": "PhishScan Analyzer",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "http://localhost:5000/*",
+    "http://127.0.0.1:5000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content-gmail.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

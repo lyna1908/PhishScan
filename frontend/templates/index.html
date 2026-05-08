@@ -77,6 +77,8 @@
     .ex-btn:hover { background: #00ff4122; }
     .ex-btn.phish { border-color: #ff313166; color: #ff3131; }
     .ex-btn.phish:hover { background: #ff31310a; }
+    .ex-btn.warn { border-color: #ff8c0066; color: #ff8c00; }
+    .ex-btn.warn:hover { background: #ff8c000a; }
 
     .terminal-box {
       border: 1px solid #00ff4155;
@@ -160,7 +162,7 @@
 
     .result-bar { height: 100%; transition: width 1s ease; width: 0%; }
     .result-bar.safe  { background: #00ff41; }
-    .result-bar.warn  { background: #ffaa00; }
+    .result-bar.warn  { background: #ff8c00; }
     .result-bar.phish { background: #ff3131; }
 
     .result-label {
@@ -180,11 +182,11 @@
     }
 
     .verdict.safe  { color: #00ff41; }
-    .verdict.warn  { color: #ffaa00; }
+    .verdict.warn  { color: #ff8c00; }
     .verdict.phish { color: #ff3131; }
 
     .triggers { margin-top: 12px; }
-    .triggers .t { font-size: 0.82rem; padding: 3px 0; color: #ffaa00; }
+    .triggers .t { font-size: 0.82rem; padding: 3px 0; color: #ff8c00; }
     .triggers .t.ok { color: #00ff41; }
 
     .cursor {
@@ -210,7 +212,7 @@
 
     .dash-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 20px;
     }
 
@@ -250,6 +252,33 @@
     .pie-legend { margin-top: 12px; font-size: 0.7rem; color: #00aa2a; letter-spacing: 1px; text-align: center; }
     .pie-legend div { margin: 3px 0; }
 
+    .mini-btn {
+      padding: 7px 12px;
+      background: transparent;
+      border: 1px solid #00ff4166;
+      color: #00ff41;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    .mini-btn:hover { background: #00ff4122; }
+
+    .install-box {
+      margin-top: 16px;
+      border: 1px solid #00ff4133;
+      background: #050505;
+      padding: 16px;
+    }
+
+    .install-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
     .footer {
       margin-top: 32px; font-size: 0.7rem;
       color: #00ff4144; letter-spacing: 2px;
@@ -288,9 +317,12 @@
     <div class="examples">
       <div class="ex-label">&gt; LOAD_EXAMPLE_EMAIL</div>
       <div class="ex-buttons">
-        <button class="ex-btn phish" onclick="loadExample('paypal')">[ PAYPAL SCAM ]</button>
-        <button class="ex-btn phish" onclick="loadExample('bank')">[ BANK FRAUD ]</button>
-        <button class="ex-btn phish" onclick="loadExample('prize')">[ PRIZE WINNER ]</button>
+        <button class="ex-btn phish" onclick="loadExample('critical_phish')">[ CRITICAL PHISH ]</button>
+        <button class="ex-btn phish" onclick="loadExample('brand_reset')">[ BRAND RESET ]</button>
+        <button class="ex-btn warn" onclick="loadExample('bank_alert')">[ BANK ALERT ]</button>
+        <button class="ex-btn phish" onclick="loadExample('delivery_scam')">[ DELIVERY SCAM ]</button>
+        <button class="ex-btn warn" onclick="loadExample('suspicious_1')">[ SUSPICIOUS A ]</button>
+        <button class="ex-btn warn" onclick="loadExample('suspicious_2')">[ SUSPICIOUS B ]</button>
         <button class="ex-btn" onclick="loadExample('legit')">[ LEGITIMATE ]</button>
       </div>
     </div>
@@ -319,6 +351,17 @@
 
     <button class="btn" id="scanBtn" onclick="analyze()">[ RUN SCAN ]</button>
 
+    <div class="install-box">
+      <div class="label">&gt; <span>INSTALL_BROWSER_EXTENSION</span></div>
+      <div class="line">Simple install from here:</div>
+      <div class="install-actions">
+        <button class="mini-btn" onclick="downloadExtension()">DOWNLOAD_EXTENSION_ZIP</button>
+      </div>
+      <div class="line" style="margin-top:8px;">1) Extract the ZIP file.</div>
+      <div class="line">2) In Chrome address bar, type: <span style="color:#00ff41;">chrome://extensions/</span></div>
+      <div class="line">3) Enable Developer mode &rarr; Load unpacked &rarr; select extracted folder.</div>
+    </div>
+
     <div class="output" id="output">
       <div class="line bright" id="log1"></div>
       <div class="line bright" id="log2"></div>
@@ -345,6 +388,11 @@
           <canvas id="pieChart" width="200" height="200"></canvas>
           <div class="pie-legend" id="pieLegend"></div>
         </div>
+        <div class="dash-box">
+          <div class="dash-subtitle">// WEIGHT SCORE</div>
+          <canvas id="weightChart" width="200" height="200"></canvas>
+          <div class="pie-legend" id="weightLegend"></div>
+        </div>
       </div>
     </div>
 
@@ -356,20 +404,40 @@
 
   <script>
     const examples = {
-      paypal: {
-        sender:  'security-alert@paypal-verify.com',
-        subject: 'Your account has been suspended immediately',
-        body:    `Dear Customer,\n\nWe have detected unusual activity on your PayPal account.\nYour account has been suspended until you verify your identity.\n\nPlease click the link below immediately to restore access:\nhttp://192.168.1.1/paypal/verify/login.php\n\nYou must confirm your account details within 24 hours or your account will be permanently limited.\n\nClick here to verify: http://bit.ly/3xPa9secure\n\nThank you,\nPayPal Security Team`
+      critical_phish: {
+        sender:  'security@apple-id-verify.com',
+        subject: 'URGENT: Your Apple ID is permanently locked',
+        body:    `<html>Dear User,\n\nYour account has been locked for security reasons.\nVerify now at http://bit.ly/apple-login-verify or click the official link:\n<a href="http://198.51.100.22/apple/login">https://apple.com/verify</a>\n\nFill the security form below:\n<form action="http://198.51.100.22/steal">Password: <input type="password"></form></html>`
       },
-      bank: {
-        sender:  'alert@your-bank-secure.net',
+      brand_reset: {
+        sender:  'security@appleid-verify-support.com',
+        subject: 'Urgent: Your Apple ID has been locked',
+        body:    `Dear User,\n\nWe detected a suspicious login on your Apple account.\nTo avoid permanent suspension, verify immediately:\nhttp://198.51.100.77/apple/login/verify\n\nUse this secure shortcut now: http://bit.ly/apple-restore-now\n\nFailure to act within 12 hours will lock your account.\n\nApple Security Team`
+      },
+      bank_alert: {
+        sender:  'alert@secure-banking-check.com',
         subject: 'Urgent: Confirm your bank account now',
-        body:    `Dear Valued Customer,\n\nYour bank account has been temporarily suspended due to suspicious login attempts.\n\nTo restore access, please verify your credentials immediately:\nhttp://203.0.113.5/bank/login/confirm.php\n\nFailure to verify within 12 hours will result in permanent account suspension.\n\nClick now: http://tinyurl.com/bankverify99\n\nBank Security Team`
+        body:    `Dear Customer,\n\nYour online banking access is temporarily suspended.\nPlease confirm your account details to reactivate service.\n\nVerify now:\nhttp://203.0.113.12/ebanking/auth/update\n\nFailure to verify within 6 hours may disable transfers.\n\nSupport Team`
       },
-      prize: {
-        sender:  'winner@global-lottery-2026.com',
-        subject: 'Congratulations! You have won $1,000,000',
-        body:    `Dear Lucky Winner,\n\nYou have been selected as the winner of our Global Lottery 2026!\nYour prize is $1,000,000 USD.\n\nTo claim your prize immediately, click the link below:\nhttp://bit.ly/claim-prize-now\n\nYou must confirm your details urgently within 48 hours.\n\nCongratulations,\nGlobal Lottery Committee`
+      invoice_fraud: {
+        sender:  'billing@accounts-payable-check.net',
+        subject: 'Payment Required: Overdue invoice INV-88412',
+        body:    `Hello,\n\nYour invoice INV-88412 is overdue.\nTo avoid legal escalation, review and pay immediately:\nhttp://tinyurl.com/invoice-review-88412\n\nIf you already paid, ignore this notice.\n\nAccounts Payable`
+      },
+      delivery_scam: {
+        sender:  'delivery@dhl-customs-clearance-alerts.com',
+        subject: 'DHL: Package held at customs - action needed',
+        body:    `Dear recipient,\n\nYour parcel is on hold due to incomplete customs information.\nSubmit confirmation now to avoid return:\nhttp://45.88.11.9/dhl/track/confirm\n\nComplete this today.\n\nDHL Dispatch Center`
+      },
+      suspicious_1: {
+        sender:  'marketing-support-verify@gmail.com',
+        subject: 'URGENT: Action Required - Account Verification',
+        body:    `Please verify your account immediately to avoid suspension!\nhttp://promo.security.update.bit.ly/123\nhttp://192.168.1.1/a`
+      },
+      suspicious_2: {
+        sender:  'accounts-payable-dept@outlook.com',
+        subject: 'FINAL NOTICE: Outstanding Payment',
+        body:    `Your invoice is overdue. Please login to our secure portal to resolve this immediately:\nhttp://bit.ly/secure-pay-portal\nhttp://203.0.113.50/billing`
       },
       legit: {
         sender:  'hr@university-alger.dz',
@@ -385,6 +453,26 @@
       document.getElementById('body').value    = ex.body;
       document.getElementById('output').style.display    = 'none';
       document.getElementById('dashboard').style.display = 'none';
+    }
+
+    function downloadExtension() {
+      window.location.href = '/download-extension';
+    }
+
+    async function hydrateFromQueryAndAnalyze() {
+      const params = new URLSearchParams(window.location.search);
+      const sender = params.get('sender');
+      const subject = params.get('subject');
+      const body = params.get('body');
+      const auto = params.get('auto') === '1';
+
+      if (sender !== null) document.getElementById('sender').value = sender;
+      if (subject !== null) document.getElementById('subject').value = subject;
+      if (body !== null) document.getElementById('body').value = body;
+
+      if (auto && (body || '').trim()) {
+        await analyze();
+      }
     }
 
     async function analyze() {
@@ -438,16 +526,17 @@
       }
 
       const mlNote = data.ml_probability !== null ? ` // ML: ${data.ml_probability}%` : '';
-      await typeLog('log3', `> Risk score: ${data.risk_score}/${data.max_score}${mlNote}`);
+      const combinedNote = data.combined_risk !== undefined ? ` // Final risk: ${data.combined_risk}%` : '';
+      await typeLog('log3', `> Risk score: ${data.risk_score}/${data.max_score}${mlNote}${combinedNote}`);
 
       const bar     = document.getElementById('bar');
       const label   = document.getElementById('barLabel');
       const verdict = document.getElementById('verdict');
 
       let colorClass;
-      if (data.risk_score <= 20)      colorClass = 'safe';
-      else if (data.risk_score <= 50) colorClass = 'warn';
-      else                             colorClass = 'phish';
+      if ((data.verdict || '').includes('LEGITIMATE'))       colorClass = 'safe';
+      else if ((data.verdict || '').includes('SUSPICIOUS'))  colorClass = 'warn';
+      else                                                    colorClass = 'phish';
 
       bar.className = 'result-bar ' + colorClass;
       label.textContent = data.risk_score + ' / ' + data.max_score;
@@ -520,6 +609,11 @@
       const triggered = featureData.filter(f => f.score > 0).length;
       const clean     = featureData.length - triggered;
       drawPie(triggered, clean);
+      
+      // Draw weight circle with final risk percentage
+      if (data.combined_risk !== undefined) {
+        drawWeight(data.combined_risk);
+      }
     }
 
     function drawPie(triggered, clean) {
@@ -567,6 +661,64 @@
       `;
     }
 
+    function drawWeight(riskPct) {
+      const canvas = document.getElementById('weightChart');
+      const ctx    = canvas.getContext('2d');
+      const cx = 100, cy = 100, r = 80;
+
+      ctx.clearRect(0, 0, 200, 200);
+
+      // Background circle (full)
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0f0f0f';
+      ctx.fill();
+      ctx.strokeStyle = '#00ff4133';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Weight arc
+      const weightAngle = (riskPct / 100) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + weightAngle);
+      ctx.closePath();
+      
+      // Color based on risk level
+      let color;
+      if (riskPct < 30) color = '#00ff41';
+      else if (riskPct < 59.5) color = '#ff8c00';
+      else color = '#ff3131';
+      
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#0a0a0a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Inner circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, 40, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fill();
+
+      // Percentage text
+      ctx.fillStyle = color;
+      ctx.font = '14px Share Tech Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(riskPct + '%', cx, cy + 5);
+
+      // Legend
+      let level;
+      if (riskPct < 30) level = 'LOW RISK';
+      else if (riskPct < 59.5) level = 'MEDIUM RISK';
+      else level = 'HIGH RISK';
+
+      document.getElementById('weightLegend').innerHTML = `
+        <div style="color:${color}">■ ${level}: ${riskPct}%</div>
+      `;
+    }
+
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
     async function typeLog(id, text) {
@@ -577,6 +729,8 @@
         await sleep(18);
       }
     }
+
+    hydrateFromQueryAndAnalyze();
   </script>
 </body>
 </html>
